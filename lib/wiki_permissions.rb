@@ -74,9 +74,9 @@ module WikiPermissions
           #Rails.logger.info "Iterate on: #{givable_role.name}"
           permissed_roles.each do |permissed_role|
             #Rails.logger.info "Permissed_role: #{permissed_role.name}"
-            #Rails.logger.info "PRole ID: #{permissed_role.object_id}"
-            #Rails.logger.info "Role: #{givable_role.object_id}"
-            if permissed_role.object_id == givable_role.object_id
+            #Rails.logger.info "PRole ID: #{permissed_role.id}"
+            #Rails.logger.info "Role: #{givable_role.id}"
+            if permissed_role.id == givable_role.id
               #Rails.logger.info "Role found"
               role_found = true
               break
@@ -136,11 +136,11 @@ module WikiPermissions
         def user_permission_greater? page, level          
           return true if admin
           
-          as_member = Member.first(:conditions => { :user_id => id, :project_id => page.project.object_id })
+          as_member = Member.first(:conditions => { :user_id => id, :project_id => page.project.id })
           user_permission = WikiPageUserPermission.first(
             :conditions => {
-              :wiki_page_id => page.object_id,
-              :member_id => as_member.object_id
+              :wiki_page_id => page.id,
+              :member_id => as_member.id
             }
           )
           #Rails.logger.info "Accessing user permission"
@@ -149,13 +149,13 @@ module WikiPermissions
             return true if user_permission.level >= level
           end
         
-          role_permissions = WikiPageRolePermission.find(:all, :conditions => {:wiki_page_id => page.object_id})
+          role_permissions = WikiPageRolePermission.find(:all, :conditions => {:wiki_page_id => page.id})
           unless role_permissions.nil? or as_member.nil? or as_member.roles.empty?
-          roles_ids = as_member.roles.map { |x| x.object_id }
+          roles_ids = as_member.roles.map { |x| x.id }
           #Rails.logger.info "Accessing role permission"
           
           role_permissions.each do |role|
-            if roles_ids.index(role.object_id)
+            if roles_ids.index(role.id)
               return role.level >= level
             end
           end
@@ -234,37 +234,7 @@ module WikiPermissions
         def index
           _index
         end
-        
-        def page_data_logic
-          page_title = params[:page]
-          @page = @wiki.find_or_new_page(page_title)
-          if @page.new_record?
-            if User.current.allowed_to?(:edit_wiki_pages, @project)
-              edit
-              render :action => 'edit'
-            else
-              render_404
-            end
-            return
-          end
-          if params[:version] && !User.current.allowed_to?(:view_wiki_edits, @project)
-            # Redirects user to the current version if he's not allowed to view previous versions
-            redirect_to :version => nil
-            return
-          end
-          @content = @page.content_for_version(params[:version])
-          if params[:export] == 'html'
-            export = render_to_string :action => 'export', :layout => false
-            send_data(export, :type => 'text/html', :filename => "#{@page.title}.html")
-            return
-          elsif params[:export] == 'txt'
-            send_data(@content.text, :type => 'text/plain', :filename => "#{@page.title}.txt")
-            return
-          end
-        	@editable = editable?
-          render :template => 'wiki/show'
-        end
-        
+
         def authorize ctrl = params[:controller], action = params[:action]
           allowed = User.current.allowed_to?({ :controller => ctrl, :action => action }, @project, { :params => params })
           allowed ? true : deny_access
@@ -282,7 +252,7 @@ module WikiPermissions
           if @wiki_page_user_permission.save
             redirect_to :action => 'permissions'
           else
-            render :action => 'new'
+            redirect_to :action => 'permissions'
           end
         end
         
@@ -291,7 +261,7 @@ module WikiPermissions
           if @wiki_page_role_permission.save
             redirect_to :action => 'permissions'
           else
-            render :action => 'new'
+            redirect_to :action => 'permissions'
           end
         end
         

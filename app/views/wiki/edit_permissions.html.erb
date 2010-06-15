@@ -4,46 +4,9 @@
 <% # members sorted by role position
    members = @project.members.all %>
 
-<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_user_permissions, :is_members => true } %>
+<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_user_permissions, :no_permissions => @page.members_without_permissions, :page => @page, :is_members => true } %>
 	
-<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_role_permissions, :is_members => false } %>
-
-
-<% if @page.members_without_permissions.size != 0 %>
-<fieldset id="add_private_permissions" class="box">
-  <legend>Add private permissions</legend>
-  <% form_for :wiki_page_user_permission, :url => { :controller => "wiki", :action => "create_wiki_page_user_permissions" } do |f| %>
-  <label for="user-select">Select user</label>
-  <select id="user-select" name="wiki_permission[member_id]">
-    <% @page.members_without_permissions.each do |member| %>
-    <option value="<%= member.id %>"><%= member.name%></option>
-    <% end %>
-  </select>
-  <input value="<%= @page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
-	<%= render :partial =>  'permission' %>
-  <% end %>
-</fieldset>
-<% else -%>
-<%= "No users to adding permissions" -%>
-<% end -%>
-
-<% if @page.roles_without_permissions.size != 0 %>
-<fieldset id="add_private_permissions" class="box">
-  <legend>Add private permissions</legend>
-  <% form_for :wiki_page_user_permission, :url => { :controller => "wiki", :action => "create_wiki_page_role_permissions" } do |f| %>
-  <label for="user-select">Role</label>
-  <select id="user-select" name="wiki_permission[role_id]">
-    <% @page.roles_without_permissions.each do |role| %>
-    <option value="<%= role.id %>"><%= role.name%></option>
-    <% end %>
-  </select>
-  <input value="<%= @page.id %>" name="wiki_permission[wiki_page_id]" type="hidden" />
-	<%= render :partial =>  'permission' %>
-  <% end %>
-</fieldset>
-<% else -%>
-<%= "No roles to adding permissions" -%>
-<% end -%>
+<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_role_permissions, :no_permissions => @page.roles_without_permissions, :page => @page, :is_members => false } %>
 
 <style type="text/css" media="screen">
   .edit_permissions_table th {
@@ -60,5 +23,10 @@
   }
   #add_private_permissions{
     clear: both;
+  }
+  
+  .wiki_permission_roles {
+	background: url(/images/database_key.png) no-repeat;
+	padding-left: 18px;
   }
 </style>

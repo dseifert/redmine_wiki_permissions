@@ -1,5 +1,5 @@
 en:
-  permission_level_0: Can't see
-  permission_level_1: Read
-  permission_level_2: Read and Edit
-  permission_level_3: Read and Edit and Edit Permissions
+  permission_level_no_access: No Access
+  permission_level_read: Read Page
+  permission_level_edit: Read/Edit Page
+  permission_level_edit_permissions: Read/Edit Page and Edit Permissions

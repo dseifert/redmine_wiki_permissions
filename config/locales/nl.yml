@@ -1,5 +1,5 @@
 nl:
-  permission_level_0: Onzichtbaar
-  permission_level_1: Lezen
-  permission_level_2: Lezen en bewerken
-  permission_level_3: Lezen, bewerken en permissies bewerken
+  permission_level_no_access: Onzichtbaar
+  permission_level_read: Lezen
+  permission_level_edit: Lezen en bewerken
+  permission_level_edit_permissions: Lezen, bewerken en permissies bewerken

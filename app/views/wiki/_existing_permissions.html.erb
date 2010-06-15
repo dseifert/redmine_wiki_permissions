@@ -1,11 +1,12 @@
+<% add_action = is_members ? "create_wiki_page_user_permissions" : "create_wiki_page_role_permissions" %>
 <% if permissions.size != 0 %>
 	<% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
 	<input value="<%= (is_members) ? 0 : 1 %>" name="wiki_page_permission[permission_type]" type="hidden" />
 
 <table class="list">
 	<thead>
-	  <th><%= l(:label_user) %></th>
-	  <th><%= l(:label_role) %></th>
+	  <th><% if is_members %><%= l(:label_user_plural) %><% else %><%= l(:label_role_plural) %><% end %></th>
+	  <th><%= l(:label_permissions) %></th>
 	  <th style="width:15%"></th>
           <%= call_hook(:view_projects_settings_members_table_header, :project => @project) %>
 	</thead>
@@ -15,19 +16,19 @@
 	
 	<tr class="<%= cycle 'odd', 'even' %>">
 	<% if is_members %>
-	<td><%= perm.user.name %></td>
+	<td><%= avatar(perm.user, :size => "16") %> <%= perm.user.name %></td>
 	<% else %>
-	<td><%= perm.role.name %></td>
+	<td><div class="wiki_permission_roles"><%= perm.role.name %></div</td>
 	<% end %>
 
     <td align="center">
     <table class="edit_permissions_table">
     <thead>
     	<tr> 
-    		<th>Can't see</th>
-    		<th>Can Read </th>
-    		<th>and Edit </th>
-    		<th>and Edit Permissions</th>
+    		<th><%= l(:permission_level_no_access) %></th>
+    		<th><%= l(:permission_level_read) %></th>
+    		<th><%= l(:permission_level_edit) %></th>
+    		<th><%= l(:permission_level_edit_permissions) %></th>
     	</tr>
     </thead>
     <tbody>
@@ -48,8 +49,26 @@
 <% end %>
 	</tbody>
 </table>
-  <input id="save-permissions" type="submit" value="Save">
+  <input id="save-permissions" type="submit" value="<%= l(:button_save) %>">
 <% end %>
 <% else %>
 <p class="nodata"><%= l(:label_no_data) %></p>
 <% end %>
+
+<% if no_permissions.size != 0 %>
+<fieldset id="add_private_permissions" class="box">
+  <legend>Add permission</legend>
+  <% form_for :wiki_permission, :url => { :controller => "wiki", :action =>add_action } do |f| %>
+  <label for="user-select"><%= is_members ? l(:label_user) : l(:label_role) %></label>
+  <select id="user-select" name="wiki_permission[<%= is_members ? "member_id" : "role_id" %>]">
+    <% no_permissions.each do |permission| %>
+    <option value="<%= permission.id %>"><%= permission.name%></option>
+    <% end %>
+  </select>
+  <input value="<%= page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
+	<%= render :partial =>  'permission' %>
+  <% end %>
+</fieldset>
+<% else -%>
+<%= "All assigned" -%>
+<% end -%>

@@ -1,8 +1,8 @@
   <label for="permission-select">Select permission</label>
   <select id="permission-select" name="wiki_permission[level]"> 
-    <option value="0">Can't see</option>
-    <option value="1">Can Read</option>
-    <option value="2">and Edit</option>
-    <option value="3">and Edit Permissions</option>
+    <option value="0"><%= l(:permission_level_no_access) %></option>
+    <option value="1"><%= l(:permission_level_read) %></option>
+    <option value="2"><%= l(:permission_level_edit) %></option>
+    <option value="3"><%= l(:permission_level_edit_permissions) %></option>
     <input type="submit">    
   </select>
