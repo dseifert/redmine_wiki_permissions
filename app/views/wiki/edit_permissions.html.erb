@@ -4,77 +4,45 @@
 <% # members sorted by role position
    members = @project.members.all %>
 
-<% if @wiki_page_user_permissions.size != 0 %>
-	<% form_for :wiki_page_user_permission, :url => { :controller => "wiki", :action => "update_wiki_page_user_permissions" } do |f| %>
-<table class="list">
-	<thead>
-	  <th><%= l(:label_user) %></th>
-	  <th><%= l(:label_role) %></th>
-	  <th style="width:15%"></th>
-          <%= call_hook(:view_projects_settings_members_table_header, :project => @project) %>
-	</thead>
-	<tbody>
-<% @wiki_page_user_permissions.each do |perm| %>
+<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_user_permissions, :is_members => true } %>
 	
-	<tr class="<%= cycle 'odd', 'even' %>">
-	<td><%= perm.user.name %></td>
-    <td align="center">
-    <table class="edit_permissions_table">
-    <thead>
-    	<tr>
-    		<th>Can't see</th>
-    		<th>Can Read </th>
-    		<th>and Edit </th>
-    		<th>and Edit Permissions</th>
-    	</tr>
-    </thead>
-    <tbody>
-    	<tr>
-    	  <% for i in 0..3 do %>
-    	  <td align="center"><%= radio_button_tag("wiki_page_user_permission[#{perm.id}]", i, i == perm.level)%></td>
-    		<% end %>
-    	</tr>
-    </tbody>
-    </table>
-    </td>
-    <td align="center">
-      <%= link_to l(:button_delete), "#{root_path}wiki/#{@project.identifier}/#{@page.title}/destroy_wiki_page_user_permissions?permission_id=#{perm.id}", :class => 'icon icon-del' %>
-    </td>
-    <%= call_hook(:view_projects_settings_members_table_row, { :project => @project, :member => perm}) %>
-	</tr>
-	</tbody>
+<%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_role_permissions, :is_members => false } %>
 
-<% end; reset_cycle %>
-</table>
-  <input id="save-permissions" type="submit" value="Save">
-<% end %>
-<% else %>
-<p class="nodata"><%= l(:label_no_data) %></p>
-<% end %>
 
 <% if @page.members_without_permissions.size != 0 %>
 <fieldset id="add_private_permissions" class="box">
   <legend>Add private permissions</legend>
   <% form_for :wiki_page_user_permission, :url => { :controller => "wiki", :action => "create_wiki_page_user_permissions" } do |f| %>
   <label for="user-select">Select user</label>
-  <select id="user-select" name="wiki_page_user_permission[member_id]">
+  <select id="user-select" name="wiki_permission[member_id]">
     <% @page.members_without_permissions.each do |member| %>
     <option value="<%= member.id %>"><%= member.name%></option>
     <% end %>
   </select>
-  <input value="<%= @page.id %>" name="wiki_page_user_permission[wiki_page_id]" style="display: none;"/>
-  <label for="permission-select">Select permission</label>
-  <select id="permission-select" name="wiki_page_user_permission[level]"> 
-    <option value="0">Can't see</option>
-    <option value="1">Can Read</option>
-    <option value="2">and Edit</option>
-    <option value="3">and Edit Permissions</option>
-    <input type="submit">    
-  </select>
+  <input value="<%= @page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
+	<%= render :partial =>  'permission' %>
   <% end %>
 </fieldset>
 <% else -%>
 <%= "No users to adding permissions" -%>
+<% end -%>
+
+<% if @page.roles_without_permissions.size != 0 %>
+<fieldset id="add_private_permissions" class="box">
+  <legend>Add private permissions</legend>
+  <% form_for :wiki_page_user_permission, :url => { :controller => "wiki", :action => "create_wiki_page_role_permissions" } do |f| %>
+  <label for="user-select">Role</label>
+  <select id="user-select" name="wiki_permission[role_id]">
+    <% @page.roles_without_permissions.each do |role| %>
+    <option value="<%= role.id %>"><%= role.name%></option>
+    <% end %>
+  </select>
+  <input value="<%= @page.id %>" name="wiki_permission[wiki_page_id]" type="hidden" />
+	<%= render :partial =>  'permission' %>
+  <% end %>
+</fieldset>
+<% else -%>
+<%= "No roles to adding permissions" -%>
 <% end -%>
 
 <style type="text/css" media="screen">

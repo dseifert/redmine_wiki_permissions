@@ -2,13 +2,13 @@ class WikiPageUserPermissionsController < ApplicationController
   
 
   def destroy
-    WikiPageUserPermission.find(params[:id]).destroy
-  	redirect_to :back
+    WikiPageRolePermission.find(params[:id]).destroy
+    redirect_to :back
   end
   
   def update
-    params[:wiki_page_user_permission].each_pair do |index, level|
-      permission = WikiPageUserPermission.find index.to_i
+    params[:wiki_page_role_permission].each_pair do |index, level|
+      permission = WikiPageRolePermission.find index.to_i
       permission.level = level.to_i
       permission.save
     end

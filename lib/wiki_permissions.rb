@@ -22,7 +22,8 @@ module WikiPermissions
     def self.included base
       
       base.class_eval do
-        has_many :permissions, :class_name => 'WikiPageUserPermission'
+        has_many :user_permissions, :class_name => 'WikiPageUserPermission'
+        has_many :role_permissions, :class_name => 'WikiPageRolePermission'
         after_create :role_creator
       end
       
@@ -56,12 +57,47 @@ module WikiPermissions
       
       def members_with_permissions
         members_wp = Array.new
-        permissions.each do |permission|
+        user_permissions.each do |permission|
           members_wp << permission.member
         end
         members_wp
       end
       
+      def roles_without_permissions
+        #Rails.logger.info "Start Roles"
+        givable_roles = Role.find_all_givable
+        permissed_roles = roles_with_permissions
+        my_roles = Array.new
+        #Rails.logger.info "Iterate"
+        givable_roles.each do |givable_role|
+          role_found = false
+          #Rails.logger.info "Iterate on: #{givable_role.name}"
+          permissed_roles.each do |permissed_role|
+            #Rails.logger.info "Permissed_role: #{permissed_role.name}"
+            #Rails.logger.info "PRole ID: #{permissed_role.object_id}"
+            #Rails.logger.info "Role: #{givable_role.object_id}"
+            if permissed_role.object_id == givable_role.object_id
+              #Rails.logger.info "Role found"
+              role_found = true
+              break
+            end
+            #Rails.logger.info "Role not found"
+          end
+          #Rails.logger.info "Adding: #{role_found}"
+          my_roles << givable_role unless role_found
+        end
+        #Rails.logger.info "End Roles"
+        return my_roles
+      end
+      
+      def roles_with_permissions
+        roles_wp = Array.new
+        role_permissions.each do |permission|
+          roles_wp << permission.role
+          #Rails.logger.info "#{permission.role}"
+        end
+        return roles_wp
+      end
       private      
       
       def role_creator
@@ -78,6 +114,8 @@ module WikiPermissions
       end
     end
   end
+  
+  
   
   module MixinUser
     def self.included base
@@ -96,16 +134,33 @@ module WikiPermissions
         end
         
         def user_permission_greater? page, level          
-          admin or (
-          as_member = Member.first(
-            :conditions => { :user_id => id, :project_id => page.project.id }
-          ) and
-          WikiPageUserPermission.first(
+          return true if admin
+          
+          as_member = Member.first(:conditions => { :user_id => id, :project_id => page.project.object_id })
+          user_permission = WikiPageUserPermission.first(
             :conditions => {
-              :wiki_page_id => page.id,
-              :member_id => as_member.id
+              :wiki_page_id => page.object_id,
+              :member_id => as_member.object_id
             }
-          ).level >= level)
+          )
+          #Rails.logger.info "Accessing user permission"
+          unless user_permission.nil?
+            #Rails.logger.info "Level: #{user_permission.level} => #{level}"
+            return true if user_permission.level >= level
+          end
+        
+          role_permissions = WikiPageRolePermission.find(:all, :conditions => {:wiki_page_id => page.object_id})
+          unless role_permissions.nil? or as_member.nil? or as_member.roles.empty?
+          roles_ids = as_member.roles.map { |x| x.object_id }
+          #Rails.logger.info "Accessing role permission"
+          
+          role_permissions.each do |role|
+            if roles_ids.index(role.object_id)
+              return role.level >= level
+            end
+          end
+          end
+          return false
         end
         
         def can_edit? page
@@ -139,24 +194,18 @@ module WikiPermissions
                   'update_wiki_page_user_permissions',
                   'destroy_wiki_page_user_permissions'
                 ].include? action[:action] and
+                options.size != 0   
 
-                options.size != 0 and
-
-                wiki_page = 
-                  WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:page] }) and
-
-                permission = WikiPageUserPermission.first(:conditions => {
-                    :member_id => Member.first(:conditions => { :user_id => User.current.id, :project_id => project.id }),
-                    :wiki_page_id => wiki_page.id
-                }) and permission     
-
+                wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:page] })
+                unless wiki_page.nil?
                 return case action[:action]
                   when 'index'
-                    permission.level > 0
+                    user_permission_greater?(wiki_page, 0)
                   when 'edit'
-                    permission.level > 1
+                    user_permission_greater?(wiki_page, 1)
                   else
-                    permission.level > 2
+                    user_permission_greater?(wiki_page, 2)
+                end
                 end
               end
               _allowed_to?(action, project, options)
@@ -169,6 +218,7 @@ module WikiPermissions
             _allowed_to?(action, project, options)
           end
         end
+        return false
       end
     end
   end
@@ -223,11 +273,12 @@ module WikiPermissions
         def permissions
           find_existing_page
           @wiki_page_user_permissions = WikiPageUserPermission.all :conditions => { :wiki_page_id => @page.id }
+          @wiki_page_role_permissions = WikiPageRolePermission.all :conditions => { :wiki_page_id => @page.id }
           render :template => 'wiki/edit_permissions'
         end
         
         def create_wiki_page_user_permissions
-          @wiki_page_user_permission = WikiPageUserPermission.new(params[:wiki_page_user_permission])
+          @wiki_page_user_permission = WikiPageUserPermission.new(params[:wiki_permission])
           if @wiki_page_user_permission.save
             redirect_to :action => 'permissions'
           else
@@ -235,19 +286,45 @@ module WikiPermissions
           end
         end
         
-        def update_wiki_page_user_permissions
-          params[:wiki_page_user_permission].each_pair do |index, level|
-            permission = WikiPageUserPermission.find index.to_i
+        def create_wiki_page_role_permissions
+          @wiki_page_role_permission = WikiPageRolePermission.new(params[:wiki_permission])
+          if @wiki_page_role_permission.save
+            redirect_to :action => 'permissions'
+          else
+            render :action => 'new'
+          end
+        end
+        
+        def update_wiki_page_permissions
+          is_user = params[:wiki_page_permission][:permission_type].to_i == 0
+          params[:wiki_permission].each_pair do |index, level|
+            permission = nil
+            if is_user
+              permission = WikiPageUserPermission.find(index.to_i)
+            else
+              permission = WikiPageRolePermission.find(index.to_i)
+              Rails.logger.info("Permissions: #{permission}")
+            end
             permission.level = level.to_i
+            Rails.logger.info("Level: #{permission.level.to_s}")
             permission.save
           end
           redirect_to :back
         end
         
-        def destroy_wiki_page_user_permissions
-          WikiPageUserPermission.find(params[:permission_id]).destroy
+        def destroy_wiki_page_permissions
+          is_user = params[:permission_type].to_i == 0
+          permission_id = params[:permission_id].to_i
+          permission = nil
+          if is_user
+              permission = WikiPageUserPermission.find(permission_id)
+            else
+              permission = WikiPageRolePermission.find(permission_id)
+          end
+          permission.destroy
+          
         	redirect_to :back
-        end
+       end
         
         def include_module_wiki_permissions?
           (@page.project.enabled_modules.detect { |enabled_module| enabled_module.name == 'wiki_permissions' }) != nil
