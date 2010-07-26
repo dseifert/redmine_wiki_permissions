@@ -4,6 +4,67 @@
 <% # members sorted by role position
    members = @project.members.all %>
 
+<% default = @page.default_permission %>
+
+<H2> Default Permission </H2> 
+
+<% if default == nil %>
+  <fieldset id="default_permission" class="box">
+    <legend>Default permission</legend>
+    <p>
+    No default permission set, using global default: "Full Access"
+
+    <% form_for :wiki_permission, :url => { :controller => "wiki", :action => "create_wiki_page_user_permissions" } do |f| %>
+      <input value="<%= @page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
+      <%= render :partial => 'permission' %>
+    <% end %>
+  </fieldset>
+ <% else %>
+
+   <% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
+    <input value="0" name="wiki_page_permission[permission_type]" type="hidden" />
+
+    <table class="list">
+      <thead>
+        <th> </th>
+        <th><%= l(:label_permissions) %></th>
+        <th style="width:15%"></th>
+        <%= call_hook(:view_projects_settings_members_table_header, :project => @project) %>
+      </thead>
+      <tbody> 
+        <tr>
+          <td> Default for this page </td>
+          <td align="center">
+            <table class="edit_permissions_table">
+              <thead>
+                <tr> 
+                  <th><%= l(:permission_level_no_access) %></th>
+                  <th><%= l(:permission_level_read) %></th>
+                  <th><%= l(:permission_level_edit) %></th>
+                  <th><%= l(:permission_level_edit_permissions) %></th>
+                </tr>
+              </thead>
+              <tbody> 
+                <tr>  
+                  <% for i in 0..3 do %>
+                    <td align="center"><%= radio_button_tag("wiki_permission[#{default.id}]", i, i == default.level)%></td>
+                  <% end %>
+                </tr>
+              </tbody>
+            </table>  
+          </td>
+          <td align="center">
+            <%= link_to l(:button_delete), "#{root_path}wiki/#{@project.identifier}/#{@page.title}/destroy_wiki_page_permissions?permission_id=#{default.id}&permission_type=0", :class => 'icon icon-del' %>
+          </td>
+          <%= call_hook(:view_projects_settings_members_table_row, { :project => @project, :member => default}) %>
+        </tr>
+      </tbody>   
+    </table>     
+   <input id="save-permissions" type="submit" value="<%= l(:button_save) %>">
+  <% end %>
+<% end %>
+
+
 <%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_user_permissions, :no_permissions => @page.members_without_permissions, :page => @page, :is_members => true } %>
 	
 <%= render :partial => 'existing_permissions', :locals => {:permissions => @wiki_page_role_permissions, :no_permissions => @page.roles_without_permissions, :page => @page, :is_members => false } %>

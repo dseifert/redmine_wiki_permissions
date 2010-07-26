@@ -31,10 +31,14 @@ module WikiPermissions
         WikiPageUserPermission.all :conditions => { :wiki_page_id => id, :level => level }
       end
       
+      def default_permission
+        WikiPageUserPermission.first :conditions => { :wiki_page_id => id, :member_id => nil }
+      end
+
       def users_by_level level
         users = Array.new
         leveled_permissions(level).each do |permission|
-          users << permission.user
+          users << permission.user if permission.member_id
         end
         users
       end
@@ -46,7 +50,7 @@ module WikiPermissions
       def users_with_permissions
         users = Array.new
         WikiPageUserPermission.all(:conditions => { :wiki_page_id => id }).each do |permission|
-          users << permission.user
+          users << permission.user if permission.member
         end
         users        
       end
@@ -58,7 +62,7 @@ module WikiPermissions
       def members_with_permissions
         members_wp = Array.new
         user_permissions.each do |permission|
-          members_wp << permission.member
+          members_wp << permission.member if permission.member_id
         end
         members_wp
       end
@@ -128,39 +132,61 @@ module WikiPermissions
           WikiPageUserPermission.first(
             :conditions => {
               :wiki_page_id => page.id,
+              :member_id => nil
+            }
+          ) == nil or
+          WikiPageUserPermission.first(
+            :conditions => {
+              :wiki_page_id => page.id,
               :member_id => Member.first(:conditions => { :user_id => id, :project_id => page.project.id }).id
             }
           ) == nil
         end
-        
+
+        # checks the permission level of the user
+        #  - if the user has an explicit permission level, use this one
+        #  - if a user's role has an explicit permission level, use this one
+        #  - if a default permission is set for the page, use it
+        #  - if no permissions are set at all, allow access
+
         def user_permission_greater? page, level          
           return true if admin
-          
+ 
+          # access for non-members is not permitted
           as_member = Member.first(:conditions => { :user_id => id, :project_id => page.project.id })
+          return false if as_member.nil?
+
+          # user specific permissions have preference
+          Rails.logger.info "Accessing user permission"
           user_permission = WikiPageUserPermission.first(
             :conditions => {
               :wiki_page_id => page.id,
               :member_id => as_member.id
             }
           )
-          #Rails.logger.info "Accessing user permission"
+
           unless user_permission.nil?
-            #Rails.logger.info "Level: #{user_permission.level} => #{level}"
-            return true if user_permission.level >= level
+            Rails.logger.info "Level: #{user_permission.level} => #{level}"
+            return user_permission.level >= level
           end
-        
-          role_permissions = WikiPageRolePermission.find(:all, :conditions => {:wiki_page_id => page.id})
-          unless role_permissions.nil? or as_member.nil? or as_member.roles.empty?
-          roles_ids = as_member.roles.map { |x| x.id }
-          #Rails.logger.info "Accessing role permission"
           
-          role_permissions.each do |role|
-            if roles_ids.index(role.id)
-              return role.level >= level
+          # check whether the user belongs to a role that has permissions set
+          role_permissions = WikiPageRolePermission.find(:all, :conditions => {:wiki_page_id => page.id})
+          unless role_permissions.nil? or as_member.roles.empty?
+            roles_ids = as_member.roles.map { |x| x.id }
+            Rails.logger.info "Accessing role permission"
+          
+            role_permissions.each do |role|
+              if roles_ids.index(role.role_id)
+                Rails.logger.info "Role.level #{role.level} >= #{level}"
+                return role.level >= level
+              end
             end
           end
-          end
-          return false
+
+          # check default permission
+          Rails.logger.info "Checking default"
+          (default = page.default_permission) ? default.level >= level : true
         end
         
         def can_edit? page
@@ -176,11 +202,6 @@ module WikiPermissions
         end
 
         def allowed_to?(action, project, options={})
-          allowed_actions = [
-            'create_wiki_page_user_permissions',
-            'destroy_wiki_page_user_permissions'
-          ]
-          
           if project != nil
             if project.enabled_modules.detect { |enabled_module| enabled_module.name == 'wiki_permissions' } != nil and \
               action.class == Hash and action[:controller] == 'wiki'
@@ -188,29 +209,33 @@ module WikiPermissions
                 return true
               elsif [
                   'index',
+                  'history',
                   'edit',
                   'permissions',                
                   'create_wiki_page_user_permissions',
-                  'update_wiki_page_user_permissions',
-                  'destroy_wiki_page_user_permissions'
+                  'create_wiki_page_role_permissions',
+                  'update_wiki_page_permissions',
+                  'destroy_wiki_page_permissions'
                 ].include? action[:action] and
                 options.size != 0   
+
+                #Rails.logger.info("checking permissions, action #{action[:action]}, title #{options[:params][:page]}")
 
                 wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:page] })
                 unless wiki_page.nil?
                 return case action[:action]
                   when 'index'
-                    user_permission_greater?(wiki_page, 0)
+                    can_view? wiki_page
+                  when 'history'
+                    can_view? wiki_page
                   when 'edit'
-                    user_permission_greater?(wiki_page, 1)
+                    can_edit? wiki_page
                   else
-                    user_permission_greater?(wiki_page, 2)
+                    can_edit_permissions? wiki_page
                 end
                 end
               end
               _allowed_to?(action, project, options)
-            #elsif action.class == Hash and action[:controller] == 'wiki' and allowed_actions.include? action[:action] 
-            #  return true
             else
               _allowed_to?(action, project, options)
             end
@@ -242,7 +267,7 @@ module WikiPermissions
         
         def permissions
           find_existing_page
-          @wiki_page_user_permissions = WikiPageUserPermission.all :conditions => { :wiki_page_id => @page.id }
+          @wiki_page_user_permissions = WikiPageUserPermission.all :conditions => ["wiki_page_id = ? AND member_id is not null", @page.id]
           @wiki_page_role_permissions = WikiPageRolePermission.all :conditions => { :wiki_page_id => @page.id }
           render :template => 'wiki/edit_permissions'
         end
@@ -276,7 +301,7 @@ module WikiPermissions
               Rails.logger.info("Permissions: #{permission}")
             end
             permission.level = level.to_i
-            Rails.logger.info("Level: #{permission.level.to_s}")
+            Rails.logger.info("Level: #{permission.level.to_s} for #{index}/#{is_user}")
             permission.save
           end
           redirect_to :back

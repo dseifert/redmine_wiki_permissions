@@ -1,27 +1,34 @@
 = Wiki permissions
 
-  Redmine Wiki Permission plugin: adding permissions for each wiki page which can be based on either a user or role.
-  There are four types of permission:
-  0) Can't See
-  1) Can Read
-  2) Can Read & Edit
-  3) Can Read & Edit & Edit permissions 
-  By default admin users & the wiki page writer have permission to Read & Edit & Edit permissions. 
-  And others permissions are the same as the default redmine permissions for the Wiki level.
-  
+The Redmine Wiki Permission plugin allows to add permissions for each wiki page 
+which can be based on either a user or role.
+
+There are four levels of permission:
+  0: No Access
+  1: Can Read
+  2: Can Read & Edit
+  3: Can Read & Edit & Edit permissions 
+
+By default admin users & the wiki page writer have permission to Read & Edit & Edit permissions.
+Other users' permissions are the same as the default redmine permissions for the Wiki.
   
 == Installing Redmine Wiki Permissions Plugin
-  1) script/plugin install git://github.com/edave/redmine_wiki_permissions.git
 
-  2) rake db:migrate_plugins
- 
-  3) switch on "wiki permissions" module in project/settings/ > Modules
+# script/plugin install git://github.com/dseifert/redmine_wiki_permissions.git
+# rake db:migrate_plugins
+# switch on "wiki permissions" module in project/settings/ > Modules
   
-== To turn off Redmine Wiki Permissions Plugin:
+== Turn off Redmine Wiki Permissions Plugin
   
-  project/settings/ > Modules
+In "Project/Settings/ > Modules" disable the module.
+
+== TODO
+
+* allow admin to set default access level for wiki
 
 == Contributions
 
-* Based on edtsech's original redmine_wiki_permissions
- * Jonas Van der Aa (Dutch translations)
+* Based on edtsech's original redmine_wiki_permissions with 
+** Jonas Van der Aa (Dutch translations)
+* Based on edave's fork adding role permissions
+* Default user permission idea and part of code from redivy's fork

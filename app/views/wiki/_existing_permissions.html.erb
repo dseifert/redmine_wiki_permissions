@@ -1,74 +1,80 @@
 <% add_action = is_members ? "create_wiki_page_user_permissions" : "create_wiki_page_role_permissions" %>
+
+<H2> <%= is_members ? "User Permissions" : "Role Permissions" %> </H2>
+
 <% if permissions.size != 0 %>
-	<% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
-	<input value="<%= (is_members) ? 0 : 1 %>" name="wiki_page_permission[permission_type]" type="hidden" />
+  <% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
+    <input value="<%= (is_members) ? 0 : 1 %>" name="wiki_page_permission[permission_type]" type="hidden" />
 
-<table class="list">
-	<thead>
-	  <th><% if is_members %><%= l(:label_user_plural) %><% else %><%= l(:label_role_plural) %><% end %></th>
-	  <th><%= l(:label_permissions) %></th>
-	  <th style="width:15%"></th>
-          <%= call_hook(:view_projects_settings_members_table_header, :project => @project) %>
-	</thead>
-	<tbody>
-	<% unless permissions.nil? %>
-	<% permissions.each do |perm| %>
-	
-	<tr class="<%= cycle 'odd', 'even' %>">
-	<% if is_members %>
-	<td><%= avatar(perm.user, :size => "16") %> <%= perm.user.name %></td>
-	<% else %>
-	<td><div class="wiki_permission_roles"><%= perm.role.name %></div</td>
-	<% end %>
+    <table class="list">
+      <thead>
+        <th><% if is_members %><%= l(:label_user_plural) %><% else %><%= l(:label_role_plural) %><% end %></th>
+        <th><%= l(:label_permissions) %></th>
+        <th style="width:15%"></th>
+        <%= call_hook(:view_projects_settings_members_table_header, :project => @project) %>
+      </thead>
+      <tbody>
+        <% unless permissions.nil? %>
+          <% permissions.each do |perm| %>
+            <tr class="<%= cycle 'odd', 'even' %>">
+              <% if is_members %>
+	        <td>
+                  <%= avatar(perm.user, :size => "16") if perm.member %>
+                  <%= perm.member ? perm.user.name : "Default user" %>
+                </td>
+              <% else %>
+                <td><div class="wiki_permission_roles"><%= perm.role.name %></div</td>
+              <% end %>
 
-    <td align="center">
-    <table class="edit_permissions_table">
-    <thead>
-    	<tr> 
-    		<th><%= l(:permission_level_no_access) %></th>
-    		<th><%= l(:permission_level_read) %></th>
-    		<th><%= l(:permission_level_edit) %></th>
-    		<th><%= l(:permission_level_edit_permissions) %></th>
-    	</tr>
-    </thead>
-    <tbody>
-    	<tr>
-    	    <% for i in 0..3 do %>
-    	  <td align="center"><%= radio_button_tag("wiki_permission[#{perm.id}]", i, i == perm.level)%></td>
-    		<% end %>
-    	</tr>
-    </tbody>
+              <td align="center">
+                <table class="edit_permissions_table">
+                  <thead>
+                    <tr> 
+                      <th><%= l(:permission_level_no_access) %></th>
+                      <th><%= l(:permission_level_read) %></th>
+                      <th><%= l(:permission_level_edit) %></th>
+                      <th><%= l(:permission_level_edit_permissions) %></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <% for i in 0..3 do %>
+                        <td align="center"><%= radio_button_tag("wiki_permission[#{perm.id}]", i, i == perm.level)%></td>
+                      <% end %>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+              <td align="center">
+                <%= link_to l(:button_delete), "#{root_path}wiki/#{@project.identifier}/#{@page.title}/destroy_wiki_page_permissions?permission_id=#{perm.id}&permission_type=#{(is_members) ? 0 : 1}", :class => 'icon icon-del' %>
+              </td>
+              <%= call_hook(:view_projects_settings_members_table_row, { :project => @project, :member => perm}) %>
+            </tr>
+          <% end; reset_cycle %>
+        <% end %>
+      </tbody>
     </table>
-    </td>
-    <td align="center">
-      <%= link_to l(:button_delete), "#{root_path}wiki/#{@project.identifier}/#{@page.title}/destroy_wiki_page_permissions?permission_id=#{perm.id}&permission_type=#{(is_members) ? 0 : 1}", :class => 'icon icon-del' %>
-    </td>
-    <%= call_hook(:view_projects_settings_members_table_row, { :project => @project, :member => perm}) %>
-	</tr>
-<% end; reset_cycle %>
-<% end %>
-	</tbody>
-</table>
-  <input id="save-permissions" type="submit" value="<%= l(:button_save) %>">
-<% end %>
+ 
+    <input id="save-permissions" type="submit" value="<%= l(:button_save) %>">
+  <% end %>
 <% else %>
-<p class="nodata"><%= l(:label_no_data) %></p>
+  <p class="nodata"><%= l(:label_no_data) %></p>
 <% end %>
 
 <% if no_permissions.size != 0 %>
-<fieldset id="add_private_permissions" class="box">
-  <legend>Add permission</legend>
-  <% form_for :wiki_permission, :url => { :controller => "wiki", :action =>add_action } do |f| %>
-  <label for="user-select"><%= is_members ? l(:label_user) : l(:label_role) %></label>
-  <select id="user-select" name="wiki_permission[<%= is_members ? "member_id" : "role_id" %>]">
-    <% no_permissions.each do |permission| %>
-    <option value="<%= permission.id %>"><%= permission.name%></option>
+  <fieldset id="add_private_permissions" class="box">
+    <legend>Add permission</legend>
+    <% form_for :wiki_permission, :url => { :controller => "wiki", :action =>add_action } do |f| %>
+      <label for="user-select"><%= is_members ? l(:label_user) : l(:label_role) %></label>
+      <select id="user-select" name="wiki_permission[<%= is_members ? "member_id" : "role_id" %>]">
+        <% no_permissions.each do |permission| %>
+          <option value="<%= permission.id %>"><%= permission.name%></option>
+        <% end %>
+      </select>
+      <input value="<%= page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
+      <%= render :partial =>  'permission' %>
     <% end %>
-  </select>
-  <input value="<%= page.id %>" name="wiki_permission[wiki_page_id]" style="display: none;"/>
-	<%= render :partial =>  'permission' %>
-  <% end %>
-</fieldset>
+  </fieldset>
 <% else -%>
-<%= "All assigned" -%>
+  <%= "All assigned" -%>
 <% end -%>
