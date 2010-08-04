@@ -3,7 +3,7 @@
 <%= link_to("Permissions" , {:action => 'permissions', :page => @page.title}, :class => 'icon icon-permissions') %>
 <style type="text/css" media="screen">
   .icon-permissions {
-    background-image: url(/plugin_assets/redmine_wiki_permissions/key.png);
+    background-image: url(<%= ActionController::Base.relative_url_root + "/plugin_assets/redmine_wiki_permissions/key.png" %>); 
   }
   .show-permissions {
     margin: 0;
