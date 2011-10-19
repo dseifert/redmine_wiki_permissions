@@ -10,9 +10,9 @@ end
 
 Redmine::Plugin.register :redmine_wiki_permissions do
   name 'Redmine Wiki Permissions plugin'
-  author 'David Pitman'
-  description 'This redmine plugin adding permissions for every wiki page'
-  version '1.0'
+  author 'Edward Tsech, David Pitman, Daniel Seifert, et al'
+  description 'This redmine plugin adds permissions for every wiki page'
+  version '1.1'
   
   project_module "wiki_permissions" do
     permission :edit_wiki_permissions, { :wiki => :permissions }
