@@ -157,7 +157,7 @@ module WikiPermissions
           return false if as_member.nil?
 
           # user specific permissions have preference
-          Rails.logger.info "Accessing user permission"
+          #Rails.logger.info "Accessing user permission for user #{id} / member #{as_member.id} and page #{page.id}"
           user_permission = WikiPageUserPermission.first(
             :conditions => {
               :wiki_page_id => page.id,
@@ -197,7 +197,7 @@ module WikiPermissions
           user_permission_greater? page, 3
         end
         
-        def can_view? page          
+        def can_view? page
           user_permission_greater? page, 1
         end
 
@@ -212,6 +212,7 @@ module WikiPermissions
                   'history',
                   'edit',
                   'permissions',                
+                  'show',
                   'create_wiki_page_user_permissions',
                   'create_wiki_page_role_permissions',
                   'update_wiki_page_permissions',
@@ -219,12 +220,14 @@ module WikiPermissions
                 ].include? action[:action] and
                 options.size != 0   
 
-                #Rails.logger.info("checking permissions, action #{action[:action]}, title #{options[:params][:page]}")
+                #Rails.logger.info("checking permissions, action #{action[:action]}, title #{options[:params][:id]}")
 
-                wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:page] })
+                wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:id] })
                 unless wiki_page.nil?
                 return case action[:action]
                   when 'index'
+                    can_view? wiki_page
+                  when 'show'
                     can_view? wiki_page
                   when 'history'
                     can_view? wiki_page
