@@ -253,11 +253,9 @@ module WikiPermissions
                     can_edit_permissions? wiki_page
                 end
             end
-            
-            return false
-          else
-            return original_permissions
           end
+            
+          return original_permissions
         end
       end
     end
