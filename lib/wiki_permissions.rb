@@ -202,12 +202,28 @@ module WikiPermissions
         end
 
         def allowed_to?(action, project, options={})
-          if project != nil
-            if project.enabled_modules.detect { |enabled_module| enabled_module.name == 'wiki_permissions' } != nil and \
-              action.class == Hash and action[:controller] == 'wiki'
-              if User.current and User.current.admin
-                return true
-              elsif [
+          # first check the actual permissions
+          original_permissions = _allowed_to?(action, project, options)
+
+          # if original permissions are false then we can't override them (as user won't have
+          # seen the Wiki tab in the first place so we don't bother)
+          return original_permissions if !original_permissions
+          
+          # we require a project (fixes http://www.redmine.org/issues/8560)
+          return original_permissions unless (project && project.is_a?(Project))
+            
+          # also use the original permissions if this plugin is not even running
+          return original_permissions unless (\
+            project.enabled_modules.detect { |enabled_module| enabled_module.name == 'wiki_permissions' } != nil and \
+            action.class == Hash and \
+            action[:controller] == 'wiki')
+          
+          # now apply our own permissions. we need to re-check everything that grants permission
+            
+          # root may do anything
+          return true if User.current and User.current.admin
+
+          if [
                   'index',
                   'history',
                   'edit',
@@ -217,13 +233,13 @@ module WikiPermissions
                   'create_wiki_page_role_permissions',
                   'update_wiki_page_permissions',
                   'destroy_wiki_page_permissions'
-                ].include? action[:action] and
-                options.size != 0   
+            ].include? action[:action] and
+            options.size != 0   
 
-                #Rails.logger.info("checking permissions, action #{action[:action]}, title #{options[:params][:id]}")
+            Rails.logger.info("checking permissions, action #{action[:action]}, title #{options[:params][:id]}")
 
-                wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:id] })
-                unless wiki_page.nil?
+            wiki_page = WikiPage.first(:conditions => { :wiki_id => project.wiki.id, :title => options[:params][:id] })
+            unless wiki_page.nil?
                 return case action[:action]
                   when 'index'
                     can_view? wiki_page
@@ -236,17 +252,13 @@ module WikiPermissions
                   else
                     can_edit_permissions? wiki_page
                 end
-                end
-              end
-              _allowed_to?(action, project, options)
-            else
-              _allowed_to?(action, project, options)
             end
+            
+            return false
           else
-            _allowed_to?(action, project, options)
+            return original_permissions
           end
         end
-        return false
       end
     end
   end
