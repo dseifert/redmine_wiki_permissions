@@ -35,6 +35,8 @@ ActionController::Routing::Routes.draw do |map|
       :create_wiki_page_user_permissions => :post,
       :destroy_wiki_page_user_permissions => [:get, :post],
       :update_wiki_page_user_permissions => :post,
+      :create_wiki_page_role_permissions => [:get, :post],
+      :update_wiki_page_role_permissions => :post,
       :history => :get,
       :preview => :any,
       :protect => :post,
