@@ -19,9 +19,10 @@
       <%= render :partial => 'permission' %>
     <% end %>
   </fieldset>
- <% else %>
 
-   <% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
+<% else %>
+
+  <% form_for :wiki_permission, :url => { :controller => "wiki", :action => "update_wiki_page_permissions" } do |f| %>
     <input value="0" name="wiki_page_permission[permission_type]" type="hidden" />
 
     <table class="list">
